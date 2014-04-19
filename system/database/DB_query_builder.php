@@ -1537,13 +1537,21 @@ abstract class CI_DB_query_builder extends CI_DB_driver {
 			return FALSE;
 		}
 
-		$sql = $this->_insert(
-			$this->protect_identifiers(
-				$this->qb_from[0], TRUE, NULL, FALSE
-			),
-			array_keys($this->qb_set),
-			array_values($this->qb_set)
-		);
+		$sql = !empty($this->qb_keys) ? 
+			$this->_insert_batch(
+				$this->protect_identifiers(
+					$this->qb_from[0], TRUE, NULL, FALSE
+				),
+				$this->qb_keys,
+				$this->qb_set
+			) :
+			$this->_insert(
+				$this->protect_identifiers(
+					$this->qb_from[0], TRUE, NULL, FALSE
+				),
+				array_keys($this->qb_set),
+				array_values($this->qb_set)
+			);
 
 		if ($reset === TRUE)
 		{
