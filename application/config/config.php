@@ -1,4 +1,4 @@
-<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+<?php
 /**
  * CodeIgniter
  *
@@ -18,12 +18,13 @@
  *
  * @package		CodeIgniter
  * @author		EllisLab Dev Team
- * @copyright	Copyright (c) 2008 - 2013, EllisLab, Inc. (http://ellislab.com/)
+ * @copyright	Copyright (c) 2008 - 2014, EllisLab, Inc. (http://ellislab.com/)
  * @license		http://opensource.org/licenses/AFL-3.0 Academic Free License (AFL 3.0)
  * @link		http://codeigniter.com
  * @since		Version 1.0
  * @filesource
  */
+defined('BASEPATH') OR exit('No direct script access allowed');
 
 /*
 |--------------------------------------------------------------------------
@@ -141,14 +142,17 @@ $config['subclass_prefix'] = 'MY_';
 | Allowed URL Characters
 |--------------------------------------------------------------------------
 |
-| This lets you specify with a regular expression which characters are permitted
-| within your URLs.  When someone tries to submit a URL with disallowed
-| characters they will get a warning message.
+| This lets you specify which characters are permitted within your URLs.
+| When someone tries to submit a URL with disallowed characters they will
+| get a warning message.
 |
 | As a security measure you are STRONGLY encouraged to restrict URLs to
 | as few characters as possible.  By default only these are allowed: a-z 0-9~%.:_-
 |
 | Leave blank to allow all characters -- but only if you are insane.
+|
+| The configured value is actually a regular expression character group
+| and it will be executed as: ! preg_match('/^[<permitted_uri_chars>]+$/i
 |
 | DO NOT CHANGE THIS UNLESS YOU FULLY UNDERSTAND THE REPERCUSSIONS!!
 |
@@ -219,7 +223,7 @@ $config['log_threshold'] = 0;
 |--------------------------------------------------------------------------
 |
 | Leave this BLANK unless you would like to set something other than the default
-| application/logs/ folder. Use a full server path with trailing slash.
+| application/logs/ directory. Use a full server path with trailing slash.
 |
 */
 $config['log_path'] = '';
@@ -251,11 +255,22 @@ $config['log_date_format'] = 'Y-m-d H:i:s';
 
 /*
 |--------------------------------------------------------------------------
+| Error Views Directory Path
+|--------------------------------------------------------------------------
+|
+| Leave this BLANK unless you would like to set something other than the default
+| application/views/errors/ directory.  Use a full server path with trailing slash.
+|
+*/
+$config['error_views_path'] = '';
+
+/*
+|--------------------------------------------------------------------------
 | Cache Directory Path
 |--------------------------------------------------------------------------
 |
 | Leave this BLANK unless you would like to set something other than the default
-| application/cache/ folder.  Use a full server path with trailing slash.
+| application/cache/ directory.  Use a full server path with trailing slash.
 |
 */
 $config['cache_path'] = '';
@@ -327,6 +342,20 @@ $config['cookie_httponly'] 	= FALSE;
 
 /*
 |--------------------------------------------------------------------------
+| Standardize newlines
+|--------------------------------------------------------------------------
+|
+| Determines whether to standardize newline characters in input data,
+| meaning to replace \r\n, \r, \n occurences with the PHP_EOL value.
+|
+| This is particularly useful for portability between UNIX-based OSes,
+| (usually \n) and Windows (\r\n).
+|
+*/
+$config['standardize_newlines'] = FALSE;
+
+/*
+|--------------------------------------------------------------------------
 | Global XSS Filtering
 |--------------------------------------------------------------------------
 |
@@ -366,6 +395,9 @@ $config['csrf_exclude_uris'] = array();
 | the output class will test whether your server supports Gzip.
 | Even if it does, however, not all browsers support compression
 | so enable only if you are reasonably sure your visitors can handle it.
+|
+| Only used if zlib.output_compression is turned off in your php.ini.
+| Please do not use it together with httpd-level output compression.
 |
 | VERY IMPORTANT:  If you are getting a blank page when compression is enabled it
 | means you are prematurely outputting something to your browser. It could

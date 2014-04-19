@@ -18,7 +18,7 @@
  *
  * @package		CodeIgniter
  * @author		EllisLab Dev Team
- * @copyright	Copyright (c) 2008 - 2013, EllisLab, Inc. (http://ellislab.com/)
+ * @copyright	Copyright (c) 2008 - 2014, EllisLab, Inc. (http://ellislab.com/)
  * @license		http://opensource.org/licenses/OSL-3.0 Open Software License (OSL 3.0)
  * @link		http://codeigniter.com
  * @since		Version 1.0
@@ -107,20 +107,8 @@ class CI_DB_mysqli_driver extends CI_DB {
 			$mysqli->options(MYSQLI_INIT_COMMAND, 'SET SESSION sql_mode="STRICT_ALL_TABLES"');
 		}
 
-		return @$mysqli->real_connect($hostname, $this->username, $this->password, $this->database, $port, NULL, $client_flags)
+		return $mysqli->real_connect($hostname, $this->username, $this->password, $this->database, $port, NULL, $client_flags)
 			? $mysqli : FALSE;
-	}
-
-	// --------------------------------------------------------------------
-
-	/**
-	 * Persistent database connection
-	 *
-	 * @return	object
-	 */
-	public function db_pconnect()
-	{
-		return $this->db_connect(TRUE);
 	}
 
 	// --------------------------------------------------------------------
@@ -175,7 +163,7 @@ class CI_DB_mysqli_driver extends CI_DB {
 	 */
 	protected function _db_set_charset($charset)
 	{
-		return @$this->conn_id->set_charset($charset);
+		return $this->conn_id->set_charset($charset);
 	}
 
 	// --------------------------------------------------------------------
