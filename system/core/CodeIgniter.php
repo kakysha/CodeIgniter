@@ -204,11 +204,14 @@ if ( ! is_php('5.4'))
  *
  */
 	$charset = strtoupper(config_item('charset'));
+	ini_set('default_charset', $charset);
 
 	if (extension_loaded('mbstring'))
 	{
 		define('MB_ENABLED', TRUE);
-		mb_internal_encoding($charset);
+		// mbstring.internal_encoding is deprecated starting with PHP 5.6
+		// and it's usage triggers E_DEPRECATED messages.
+		@ini_set('mbstring.internal_encoding', $charset);
 		// This is required for mb_convert_encoding() to strip invalid characters.
 		// That's utilized by CI_Utf8, but it's also done for consistency with iconv.
 		mb_substitute_character('none');
@@ -223,11 +226,18 @@ if ( ! is_php('5.4'))
 	if (extension_loaded('iconv'))
 	{
 		define('ICONV_ENABLED', TRUE);
-		iconv_set_encoding('internal_encoding', $charset);
+		// iconv.internal_encoding is deprecated starting with PHP 5.6
+		// and it's usage triggers E_DEPRECATED messages.
+		@ini_set('iconv.internal_encoding', $charset);
 	}
 	else
 	{
 		define('ICONV_ENABLED', FALSE);
+	}
+
+	if (is_php('5.6'))
+	{
+		ini_set('php.internal_encoding', $charset);
 	}
 
 /*
@@ -239,7 +249,7 @@ if ( ! is_php('5.4'))
 	require_once(BASEPATH.'core/compat/mbstring.php');
 	require_once(BASEPATH.'core/compat/hash.php');
 	require_once(BASEPATH.'core/compat/password.php');
-	require_once(BASEPATH.'core/compat/array.php');
+	require_once(BASEPATH.'core/compat/standard.php');
 
 /*
  * ------------------------------------------------------
@@ -435,6 +445,23 @@ if ( ! is_php('5.4'))
 	if ($method !== '_remap')
 	{
 		$params = array_slice($URI->rsegments, 2);
+	}
+
+/*
+ * ------------------------------------------------------
+ *  Should we use a Composer autoloader?
+ * ------------------------------------------------------
+ */
+	if (($composer_autoload = config_item('composer_autoload')) !== FALSE)
+	{
+		if ($composer_autoload === TRUE && file_exists(APPPATH.'vendor/autoload.php'))
+		{
+			require_once(APPPATH.'vendor/autoload.php');
+		}
+		elseif (file_exists($composer_autoload))
+		{
+			require_once($composer_autoload);
+		}
 	}
 
 /*

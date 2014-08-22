@@ -97,6 +97,13 @@ by editing the 'csrf_exclude_uris' config parameter::
 
 	$config['csrf_exclude_uris'] = array('api/person/add');
 
+Regular expressions are also supported (case-insensitive)::
+
+	$config['csrf_exclude_uris'] = array(
+		'api/record/[0-9]+',
+		'api/title/[a-z]+'
+	);
+
 ***************
 Class Reference
 ***************
