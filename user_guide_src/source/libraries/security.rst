@@ -12,8 +12,9 @@ application, processing input data for security.
 
   <div class="custom-index container"></div>
 
+*************
 XSS Filtering
-=============
+*************
 
 CodeIgniter comes with a Cross Site Scripting Hack prevention filter
 which can either run automatically to filter all POST and COOKIE data
@@ -57,8 +58,9 @@ browser may attempt to execute.
 		// file failed the XSS test
 	}
 
+*********************************
 Cross-site request forgery (CSRF)
-=================================
+*********************************
 
 You can enable CSRF protection by altering your **application/config/config.php**
 file in the following way::
@@ -164,3 +166,18 @@ Class Reference
 		it tries to detect HTML entities that don't end in a semicolon because some browsers allow that.
 
 		If the ``$charset`` parameter is left empty, then your configured ``$config['charset']`` value will be used.
+
+	.. method:: get_random_bytes($length)
+
+		:param	int	$length: Output length
+		:returns:	A binary stream of random bytes or FALSE on failure
+		:rtype:	string
+
+		A convenience method for getting proper random bytes via ``mcrypt_create_iv()``,
+		``/dev/urandom`` or ``openssl_random_pseudo_bytes()`` (in that order), if one
+		of them is available.
+
+		Used for generating CSRF and XSS tokens.
+
+		.. note:: The output is NOT guaranteed to be cryptographically secure,
+			just the best attempt at that.

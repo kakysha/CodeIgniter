@@ -326,14 +326,13 @@ In addition to the validation method like the ones we used above, you
 can also prep your data in various ways. For example, you can set up
 rules like this::
 
-	$this->form_validation->set_rules('username', 'Username', 'trim|required|min_length[5]|max_length[12]|xss_clean');
+	$this->form_validation->set_rules('username', 'Username', 'trim|required|min_length[5]|max_length[12]');
 	$this->form_validation->set_rules('password', 'Password', 'trim|required|md5');
 	$this->form_validation->set_rules('passconf', 'Password Confirmation', 'trim|required|matches[password]');
 	$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email');
 
-In the above example, we are "trimming" the fields, converting the
-password to MD5, and running the username through the `xss_clean()`
-method, which removes malicious data.
+In the above example, we are "trimming" the fields, checking for length
+where necessary and converting the password to MD5.
 
 **Any native PHP function that accepts one parameter can be used as a
 rule, like htmlspecialchars, trim, md5, etc.**
@@ -505,8 +504,37 @@ function::
 			'required',
 			function($value)
 			{
-				// Check $value and return TRUE/FALSE
+				// Check $value
 			}
+		)
+	);
+
+Of course, since a Callable rule by itself is not a string, it isn't
+a rule name either. That is a problem when you want to set error messages
+for them. In order to get around that problem, you can put such rules as
+the second element of an array, with the first one being the rule name::
+
+	$this->form_validation->set_rules(
+		'username', 'Username',
+		array(
+			'required',
+			array('username_callable', array($this->users_model, 'valid_username'))
+		)
+	);
+
+Anonymous function (PHP 5.3+) version::
+
+	$this->form_validation->set_rules(
+		'username', 'Username',
+		array(
+			'required',
+			array(
+				'username_callable',
+				function($str)
+				{
+					// Check validity of $str and return TRUE or FALSE
+				}
+			)
 		)
 	);
 
@@ -973,7 +1001,6 @@ to use:
 ==================== ========= =======================================================================================================
 Name                 Parameter Description
 ==================== ========= =======================================================================================================
-**xss_clean**        No        Runs the data through the XSS filtering method, described in the :doc:`Security Class <security>` page.
 **prep_for_form**    No        Converts special characters so that HTML data can be shown in a form field without breaking it.
 **prep_url**         No        Adds "\http://" to URLs if missing.
 **strip_image_tags** No        Strips the HTML from image tags leaving the raw URL.
