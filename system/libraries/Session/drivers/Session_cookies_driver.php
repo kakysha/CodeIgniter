@@ -31,7 +31,7 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	 * 
 	 * @var object
 	 */
-	protected $_CI;
+	protected $CI;
 	
 	/**
 	 * Class constructor
@@ -43,8 +43,9 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	{
 		parent::__construct($params);
 		
+		$this->CI =& get_instance();
+		
 		// Load additional config parameters specific to this driver
-		$this->_config['encryption_key'] = config_item('encryption_key');
 		isset($this->_config['encrypt_data_cookie']) OR $this->_config['encrypt_data_cookie'] = config_item('sess_encrypt_data_cookie');
 		
 		// Sanitize session_data cookie name
@@ -57,19 +58,20 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 			$this->_config['save_path'] = 'ci_session_data';
 		}
 		
-		if (empty($this->_config['encryption_key']))
-		{
-			log_message('error', 'Session: encryption_key is not set, aborting.');
-		} else 
-		{
-			$this->_encryption_key = $this->_config['encryption_key'];
-		}
-		
+		// Encrypt cookie?
 		if ( ! empty($this->_config['encrypt_data_cookie']) && $this->_config['encrypt_data_cookie'] === TRUE)
 		{
-			$this->_CI =& get_instance();
-			$this->_CI->load->library('encryption');
+			$this->CI->load->library('encryption');
 			$this->_encrypt_data_cookie = TRUE;
+		} 
+		else
+		// Or just sign with HMAC?
+		{
+			$this->_encryption_key = config_item('encryption_key');
+			if (empty($this->_encryption_key))
+			{
+				log_message('error', 'Session: encryption_key is not set, aborting.');
+			}
 		}
 	}
 
@@ -101,17 +103,36 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	 * @return	string	Serialized session data
 	 */
 	public function read($session_id)
-	{
-		if ( ! isset($this->_encryption_key))
-			return FALSE;
-		
-		if (isset($_COOKIE[$this->_config['save_path']]))
+	{	
+		// Fetch the cookie
+		$session = $this->CI->input->cookie($this->_config['save_path']);
+		// No cookie? Goodbye cruel world!...
+		if ($session === NULL)
 		{
-			// Needed by write() to detect session_regenerate_id() calls
-			$this->_session_id = $session_id;
-			
-			// Load session data from cookie
-			$session = $_COOKIE[$this->_config['save_path']];
+			log_message('debug', 'A session data cookie was not found.');
+			return '';
+		}
+
+		// Needed by write() to detect session_regenerate_id() calls
+		$this->_session_id = $session_id;
+
+		// Decrypt the cookie data
+		if ($this->_encrypt_data_cookie == TRUE)
+		{
+			$session = $this->CI->encryption->decrypt($session);
+			if ($session === FALSE)
+			{
+				log_message('error', 'Session: Unable to decrypt the session cookie.');
+				return FALSE;
+			}
+		} 
+		else
+		{
+			if (empty($this->_encryption_key))
+			{
+				log_message('error', 'Session: encryption_key is not set and cookie encryption disabled.');
+				return FALSE;
+			}
 			
 			// HMAC authentication
 			$len = strlen($session) - 40;
@@ -120,9 +141,11 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 				log_message('error', 'Session: The session cookie was not signed.');
 				return FALSE;
 			}
+			
 			// Check cookie authentication
 			$hmac = substr($session, $len);
 			$session = substr($session, 0, $len);
+			
 			// Time-attack-safe comparison
 			$hmac_check = hash_hmac('sha1', $session, $this->_encryption_key);
 			$diff = 0;
@@ -131,31 +154,24 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 				$xor = ord($hmac[$i]) ^ ord($hmac_check[$i]);
 				$diff |= $xor;
 			}
+			
 			if ($diff !== 0)
 			{
 				log_message('error', 'Session: HMAC mismatch. The session cookie data did not match what was expected.');
 				return FALSE;
 			}
-			
-			// Decrypt the cookie data
-			if ($this->_encrypt_data_cookie == TRUE)
-			{
-				$session = $this->_CI->encryption->decrypt($session);
-			}
-			
-			$session = $this->_unserialize($session);
-			
-			// Does IP match?
-			if ($this->_config['match_ip'] && ( ! isset($session['ip_address']) OR $session['ip_address'] !== $_SERVER['REMOTE_ADDR']))
-				return FALSE;
-			
-			$session_data = $session['data'];
-			
-			$this->_fingerprint = md5($session_data);
-			return $session_data;
 		}
 
-		return '';
+		$session = @unserialize($session);
+
+		// Does IP match?
+		if ($this->_config['match_ip'] && ( ! isset($session['ip_address']) OR $session['ip_address'] !== $_SERVER['REMOTE_ADDR']))
+			return FALSE;
+
+		$session_data = $session['data'];
+
+		$this->_fingerprint = md5($session_data);
+		return $session_data;
 	}
 
 	// ------------------------------------------------------------------------
@@ -170,10 +186,7 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	 * @return	bool
 	 */
 	public function write($session_id, $session_data)
-	{
-		if ( ! isset($this->_encryption_key))
-			return FALSE;
-		
+	{		
 		// Was the ID regenerated?
 		if ($session_id !== $this->_session_id)
 		{
@@ -183,22 +196,31 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 		
 		if ($this->_fingerprint !== ($fingerprint = md5($session_data)))
 		{
-			// Serialize the userdata for the cookie
+			// IP match check
 			$session = array('data' => $session_data);
 			if ($this->_config['match_ip'])
 			{
 				$session['ip_address'] = $_SERVER['REMOTE_ADDR'];
 			}
-			$session = $this->_serialize($session);
+			
+			// Serialize the userdata for the cookie
+			$session = serialize($session);
 			
 			// Encrypt the cookie data
 			if ($this->_encrypt_data_cookie == TRUE)
 			{
-				$session = $this->_CI->encryption->encrypt($session);
+				$session = $this->CI->encryption->encrypt($session);
 			}
-
+			else
 			// Sign session data
-			$session .= hash_hmac('sha1', $session, $this->_encryption_key);
+			{
+				if (empty($this->_encryption_key))
+				{
+					log_message('error', 'Session: encryption_key is not set and cookie encryption disabled.');
+					return FALSE;
+				}
+				$session .= hash_hmac('sha1', $session, $this->_encryption_key);
+			}
 			
 			// Set the cookie
 			$expiration = $this->_config['expiration'] + time();
@@ -245,15 +267,7 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	 */
 	public function destroy($session_id)
 	{
-		return setcookie(
-			$this->_config['save_path'],
-			NULL,
-			1,
-			$this->_config['cookie_path'],
-			$this->_config['cookie_domain'],
-			$this->_config['cookie_secure'],
-			TRUE
-		) && $this->_cookie_destroy();
+		return $this->_unset_data_cookie() && $this->_cookie_destroy();
 	}
 
 	// ------------------------------------------------------------------------
@@ -271,67 +285,18 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 		// Not necessary, browser takes care of that.
 		return TRUE;
 	}
-
+	
 	// ------------------------------------------------------------------------
-	
-	/**
-	 * Serialize an array
-	 *
-	 * This function first converts any slashes found in the array to a temporary
-	 * marker, so when it gets unserialized the slashes will be preserved
-	 *
-	 * @access	private
-	 * @param	array
-	 * @return	string
-	 */
-	private function _serialize($data)
-	{
-		if (is_array($data))
-		{
-			foreach ($data as $key => $val)
-			{
-				if (is_string($val))
-				{
-					$data[$key] = str_replace('\\', '{{slash}}', $val);
-				}
-			}
-		}
-		else
-		{
-			if (is_string($data))
-			{
-				$data = str_replace('\\', '{{slash}}', $data);
-			}
-		}
-		return serialize($data);
-	}
-	
-	// --------------------------------------------------------------------
-	
-	/**
-	 * Unserialize
-	 *
-	 * This function unserializes a data string, then converts any
-	 * temporary slash markers back to actual slashes
-	 *
-	 * @access	private
-	 * @param	array
-	 * @return	string
-	 */
-	private function _unserialize($data)
-	{
-		$data = @unserialize(stripslashes($data));
-		if (is_array($data))
-		{
-			foreach ($data as $key => $val)
-			{
-				if (is_string($val))
-				{
-					$data[$key] = str_replace('{{slash}}', '\\', $val);
-				}
-			}
-			return $data;
-		}
-		return (is_string($data)) ? str_replace('{{slash}}', '\\', $data) : $data;
+
+	protected function _unset_data_cookie() {
+		return setcookie(
+			$this->_config['save_path'],
+			NULL,
+			1,
+			$this->_config['cookie_path'],
+			$this->_config['cookie_domain'],
+			$this->_config['cookie_secure'],
+			TRUE
+		);
 	}
 }
