@@ -54,7 +54,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 if ( ! function_exists('is_php'))
 {
 	/**
-	 * Determines if the current version of PHP is greater then the supplied value
+	 * Determines if the current version of PHP is equal to or greater than the supplied value
 	 *
 	 * @param	string
 	 * @return	bool	TRUE if the current version is $version or higher
@@ -86,7 +86,7 @@ if ( ! function_exists('is_really_writable'))
 	 *
 	 * @link	https://bugs.php.net/bug.php?id=54709
 	 * @param	string
-	 * @return	void
+	 * @return	bool
 	 */
 	function is_really_writable($file)
 	{
@@ -555,15 +555,14 @@ if ( ! function_exists('set_status_header'))
 			}
 		}
 
-		$server_protocol = isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : FALSE;
-
 		if (strpos(PHP_SAPI, 'cgi') === 0)
 		{
 			header('Status: '.$code.' '.$text, TRUE);
 		}
 		else
 		{
-			header(($server_protocol ? $server_protocol : 'HTTP/1.1').' '.$code.' '.$text, TRUE, $code);
+			$server_protocol = isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1';
+			header($server_protocol.' '.$code.' '.$text, TRUE, $code);
 		}
 	}
 }
@@ -627,6 +626,27 @@ if ( ! function_exists('_error_handler'))
 		{
 			exit(1); // EXIT_ERROR
 		}
+	}
+}
+
+// --------------------------------------------------------------------
+
+if ( ! function_exists('_exception_handler'))
+{
+	/**
+	 * Exception Handler
+	 *
+	 * This is the custom exception handler that is declared at the top
+	 * of CodeIgniter.php. The main reason we use this is to permit
+	 * PHP exceptions to be logged in our own log files since the user may
+	 * not have access to server logs.
+	 *
+	 * @param	Exception $e
+	 * @return	void
+	 */
+	function _exception_handler(Exception $e)
+	{
+		_error_handler(E_ERROR, $e->__toString(), $e->getFile(), $e->getLine());
 	}
 }
 
