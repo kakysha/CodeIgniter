@@ -186,7 +186,10 @@ class CI_Session_cookies_driver extends CI_Session_driver implements SessionHand
 	 * @return	bool
 	 */
 	public function write($session_id, $session_data)
-	{		
+	{
+		if (headers_sent())
+			return FALSE;
+		
 		// Was the ID regenerated?
 		if ($session_id !== $this->_session_id)
 		{
