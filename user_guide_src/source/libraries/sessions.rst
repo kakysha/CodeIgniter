@@ -363,7 +363,7 @@ To read a tempdata variable, again you can just access it through the
 
 .. important:: The ``userdata()`` method will NOT return tempdata items.
 
-Or if you want to be sure that you're reading "flashdata" (and not any
+Or if you want to be sure that you're reading "tempdata" (and not any
 other kind), you can also use the ``tempdata()`` method::
 
 	$this->session->tempdata('item');
@@ -590,7 +590,7 @@ For MySQL::
 		`id` varchar(40) NOT NULL,
 		`ip_address` varchar(45) NOT NULL,
 		`timestamp` int(10) unsigned DEFAULT 0 NOT NULL,
-		`data` blob DEFAULT '' NOT NULL,
+		`data` blob NOT NULL,
 		PRIMARY KEY (id),
 		KEY `ci_sessions_timestamp` (`timestamp`)
 	);
@@ -624,6 +624,10 @@ also do the following, after creating the table::
 Redis Driver
 ------------
 
+.. note:: Since Redis doesn't have a locking mechanism exposed, locks for
+	this driver are emulated by a separate value that is kept for up
+	to 300 seconds.
+
 Redis is a storage engine typically used for caching and popular because
 of its high performance, which is also probably your reason to use the
 'redis' session driver.
@@ -656,6 +660,10 @@ sufficient::
 
 Memcached Driver
 ----------------
+
+.. note:: Since Memcache doesn't have a locking mechanism exposed, locks
+	for this driver are emulated by a separate value that is kept for
+	up to 300 seconds.
 
 The 'memcached' driver is very similar to the 'redis' one in all of its
 properties, except perhaps for availability, because PHP's `Memcached
